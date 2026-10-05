@@ -4,8 +4,8 @@ compatibility_date = "2026-06-01"
 
 [[r2_buckets]]
 binding = "IMAGE_BUCKET"
-bucket_name = "kidzen-ai"
+bucket_name = "mss-kidzen-ai"
 
 [vars]
-IMAGE_BASE_URL = "https://pub-d83d5617ccbf454eaeea84e2c38a8bce.r2.dev"
+IMAGE_BASE_URL = "https://pub-5775b8ffc17b4e389f613dca71c88dec.r2.dev"
 IDEAS_MODEL = "gpt-4o-mini"
