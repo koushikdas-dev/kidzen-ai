@@ -1,0 +1,11 @@
+name = "kidzen-ai"
+main = "src/index.js"
+compatibility_date = "2026-06-01"
+
+[[r2_buckets]]
+binding = "IMAGE_BUCKET"
+bucket_name = "kidzen-ai"
+
+[vars]
+IMAGE_BASE_URL = "https://pub-d83d5617ccbf454eaeea84e2c38a8bce.r2.dev"
+IDEAS_MODEL = "gpt-4o-mini"
