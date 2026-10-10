@@ -1,4 +1,4 @@
-# Kidzen Tutor API v2.2 — simple app flow
+# Kidzen Tutor API v2.3 — UID-only app flow
 
 Google login → premium membership OR enough XP → ask the tutor → checked text → optional audio/illustration.
 
@@ -10,28 +10,25 @@ Google login, store purchases and the Firebase Realtime Database wallet remain i
 npm ci
 npm test
 npx wrangler secret put OPENAI_API_KEY
-npx wrangler secret put TUTOR_APP_KEY
 npm run deploy
 ```
 
-Choose an unpredictable app key of at least16characters when prompted for TUTOR_APP_KEY. Use the same app key in Flutter and Postman. OPENAI_API_KEY stays in Cloudflare; do not put it in Flutter/Postman. GPT_API is supported as an old key-name fallback.
+Your OpenAI API key stays only in Cloudflare, as a secret named OPENAI_API_KEY (GPT_API is a legacy fallback). No client app key, JWT or token-issuing backend is used. A separate TUTOR_APP_KEY stored in Cloudflare has no role in this mode and can be removed.
 
-Existing Worker name/binding/migration remain; deployment updates kidzen-students-ai-tutor. Remove old TUTOR_JWT_SECRET if desired; it is no longer used. Configure actual allowed web origins and accessible model IDs in wrangler.toml.
+Existing Worker name, Durable Object binding and migration remain. Configure allowed web origins and accessible model IDs. Child-data/audio/photo readiness settings remain as documented below.
 
-Import both JSON files from postman/, select Kidzen_Tutor_Simple and fill:
+Import both JSON files from postman/, select Kidzen_Tutor_UID_Only and fill:
 
 | Variable | Value |
 | --- | --- |
 | base_url | Your deployed Worker URL |
-| app_key | The TUTOR_APP_KEY configured in Cloudflare |
 | user_id | postman-test-user, or your Google/Firebase UID |
 
 Start Health → Configuration → Text question → Audio answer. No access_token needed. Pick WAV/image files in Body > form-data for media requests. This package contains the updated33-request collection; discard the previous JWT-based collection/environment.
 
-Protected calls send only:
+Tutor calls send only:
 
 ```http
-X-App-Key: YOUR_APP_KEY
 X-User-Id: YOUR_GOOGLE_OR_FIREBASE_UID
 ```
 
@@ -53,7 +50,7 @@ The reserve callback must perform an atomic debit/reservation, not read-and-subt
 
 ## Scope of this simple access mode
 
-X-App-Key is an app-level access check, not proof of Google identity or purchase. No store receipt, premium status or XP balance is verified by Cloudflare, and the Worker does not write Firebase. The app controls payment access as requested. Embedded keys can be extracted and client-supplied IDs/premium/XP checks can be forged; direct API calls may bypass purchases. User-ID quotas are best effort and can be bypassed by changing IDs. Set OpenAI account/project spend controls and alerts. Future stronger enforcement can use existing Firebase identity/entitlement verification, but it is not required or implemented here.
+The Worker accepts a client-supplied Firebase UID without verifying Firebase authentication. A UID is an identifier, not proof that the caller owns that account. No store receipt, premium status or XP balance is verified by Cloudflare, and the Worker does not write Firebase. The app controls payment access as requested. There is no caller authentication at this API. Client-supplied IDs/premium/XP checks can be forged; direct calls may bypass login and purchases. User-ID quotas are best effort and can be bypassed by changing IDs. Set OpenAI account/project spend controls and alerts. Future stronger enforcement can use existing Firebase identity/entitlement verification, but it is not required or implemented here.
 
 Google login and a purchase are not guardian consent. Keep your caregiver consent/age/privacy/help flow in the existing app; custom server-issued consent JWTs were removed.
 
@@ -86,7 +83,6 @@ Old image/marketing/logo routes return404.
 
 ```bash
 curl https://YOUR_WORKER.workers.dev/v1/tutor/chat \
-  -H 'X-App-Key: YOUR_APP_KEY' \
   -H 'X-User-Id: postman-test-user' \
   -H 'Content-Type: application/json' \
   --data '{"message":"Why is the sky blue?","grade":"nursery","language":"en","visual_mode":"auto","history":[]}'
@@ -104,7 +100,7 @@ Audio: mono16kHzPCM16WAV, nonempty, ≤45seconds; actual duration/header checked
 
 Reply fields under data: answer,follow_up,needs_adult_help,grade,language,status,visual(nullable),speech(nullable). Success statuses: answered,safe_alternative,adult_help,privacy_reminder. Failures may include curated text with unavailable/HTTP503. Render plain text only.
 
-With audio enabled, speech.token is created automatically by Cloudflare and captured by Postman. This is a checked-answer receipt, not a login token; no manual generation or extra signing secret. Send {"speech_token":"RECEIPT_FROM_REPLY"} to /v1/tutor/speech with the same app key/user ID. The receipt expires after10minutes, is not encrypted and must not be logged. A server-only signing key is domain-separated from the OpenAI key; rotating that key invalidates pending receipts. Do not put OpenAI credentials into the app. Speech returns audio/mpeg on success and JSON errors otherwise.
+With audio enabled, speech.token is created automatically by Cloudflare and captured by Postman. This is a checked-answer receipt, not a login token; no manual generation or extra signing secret. Send {"speech_token":"RECEIPT_FROM_REPLY"} to /v1/tutor/speech with the same user ID. The receipt expires after10minutes, is not encrypted and must not be logged. A server-only signing key is domain-separated from the OpenAI key; rotating that key invalidates pending receipts. Do not put OpenAI credentials into the app. Speech returns audio/mpeg on success and JSON errors otherwise.
 
 Voice is configurable cheerful/gentle synthetic storybook delivery; not a guaranteed real/dedicated child voice. Default coral/gpt-4o-mini-tts; audition English/Hindi/Bengali. Clear AI-generated voice disclosure required. Download once, replay locally, retain text if audio fails. Phone/device TTS of the checked answer is a lower-cost alternative with variable voice quality. Speech/illustrations do not consume XP again in the Flutter wrapper.
 
@@ -116,8 +112,8 @@ Six reusable illustrations (sky,plant,counting five dots,shapes,rain,teeth), opt
 
 Per supplied user-ID quotas:6paid requests/minute,100/day combined; voice30/day,photo10/day,speech20/day;3illustrated answers/day. Failed/rejected calls consume request quota. Daily windows UTC. Counters expire about a day after inactivity; infrastructure backup retention may outlast deletion. These limits control ordinary app usage, not malicious client impersonation.
 
-Errors:400validation/UID,401wrong app key,403origin,404route,405method,413size,415format,422unclear transcript,429quota,503configuration/provider. Retry-After60 does not reset a depleted daily budget. Use request timeout150seconds for voice/photo. Do not auto-retry paid requests.
+Errors:400validation/UID,401invalid speech receipt,403origin,404route,405method,413size,415format,422unclear transcript,429quota,503configuration/provider. Retry-After60 does not reset a depleted daily budget. Use request timeout150seconds for voice/photo. Do not auto-retry paid requests.
 
 ## Validation
 
-37 offline API tests pass with app-key/UID access, child-safety routing, audio receipt binding, media checks, quotas, and failures. Live OpenAI/Cloudflare deployment, actual Postman UI import, audible speech evaluation, Flutter analysis/build and your store/Firebase wallet integration have not been performed. Flutter SDK is unavailable here. Use supplied synthetic evaluation cases and real-device staging checks before launch.
+37 offline API tests pass with UID-only access, child-safety routing, audio receipt binding, media checks, quotas, and failures. Live OpenAI/Cloudflare deployment, actual Postman UI import, audible speech evaluation, Flutter analysis/build and your store/Firebase wallet integration have not been performed. Flutter SDK is unavailable here. Use supplied synthetic evaluation cases and real-device staging checks before launch.

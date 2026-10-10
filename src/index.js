@@ -1,5 +1,4 @@
 import { GRADES, LANGUAGES, SUGGESTIONS, fallback, hasBlockedWords, hasPrivateDetails, urgentDisclosure } from './policy.js';
-import { verifyAppKey } from './auth.js';
 import { moderate, generate, review } from './openai.js';
 import { boundedBytes, parseUpload, base64, RequestError } from './media.js';
 import { transcribe, issueSpeechToken, verifySpeechToken, synthesize } from './speech.js';
@@ -31,10 +30,10 @@ export function createWorker(fetcher=fetch) {
   const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers});
   if(origin && !origins.includes(origin))return json({success:false,error:'origin_not_allowed'},403);
   if(origin)headers['Access-Control-Allow-Origin']=origin;
-  headers['Access-Control-Expose-Headers']='X-Request-Id, Retry-After';headers['Access-Control-Allow-Methods']='GET, POST, OPTIONS';headers['Access-Control-Allow-Headers']='X-App-Key, X-User-Id, Content-Type';
+  headers['Access-Control-Expose-Headers']='X-Request-Id, Retry-After';headers['Access-Control-Allow-Methods']='GET, POST, OPTIONS';headers['Access-Control-Allow-Headers']='X-User-Id, Content-Type';
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
   const path=new URL(request.url).pathname;
-  if(path==='/health' && request.method==='GET')return json({success:true,service:'kidzen-students-ai-tutor',version:'2.2.0'});
+  if(path==='/health' && request.method==='GET')return json({success:true,service:'kidzen-students-ai-tutor',version:'2.3.0'});
   const visualId=path.match(/^\/v1\/tutor\/visuals\/([a-z]+)\.svg$/)?.[1];
   if(visualId && request.method==='GET') {
    const svg=visualSvg(visualId);if(svg)return new Response(svg,{headers:{...headers,'Content-Type':'image/svg+xml','Cache-Control':'public, max-age=86400','Content-Security-Policy':"default-src 'none'; style-src 'none'; sandbox"}});
@@ -42,8 +41,6 @@ export function createWorker(fetcher=fetch) {
   const routes={'/v1/tutor/config':'GET','/v1/tutor/suggestions':'GET','/v1/tutor/chat':'POST','/chat':'POST','/v1/tutor/voice-chat':'POST','/v1/tutor/photo-chat':'POST','/v1/tutor/speech':'POST'};
   if(!Object.hasOwn(routes,path))return json({success:false,error:'endpoint_not_found'},404);
   if(routes[path]!==request.method){headers.Allow=routes[path];return json({success:false,error:'method_not_allowed'},405);}
-  if(!env.TUTOR_APP_KEY || env.TUTOR_APP_KEY.length<16)return json({success:false,error:'app_key_not_configured'},503);
-  if(!await verifyAppKey(request,env))return json({success:false,error:'invalid_app_key'},401);
   const userId=request.headers.get('X-User-Id');
   if(!userId || !/^[A-Za-z0-9_-]{1,128}$/.test(userId))return json({success:false,error:'user_id_required'},400);
   // Client-supplied UID is used only for quotas, never proof of identity/payment.
