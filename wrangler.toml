@@ -16,7 +16,7 @@ PHOTO_UPLOAD_SAFEGUARDS_CONFIRMED = "false"
 ALLOWED_ORIGINS = "https://your-app.example"
 # Set true ONLY after OpenAI confirms Zero Data Retention for the API project.
 # This flag is an operator attestation, not an OpenAI retention setting.
-OPENAI_ZDR_CONFIRMED = "false"
+OPENAI_ZDR_CONFIRMED = "true"
 
 [[durable_objects.bindings]]
 name = "TUTOR_LIMITER"
