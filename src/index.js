@@ -1,5 +1,5 @@
 import { GRADES, LANGUAGES, SUGGESTIONS, fallback, hasBlockedWords, hasPrivateDetails, urgentDisclosure } from './policy.js';
-import { verifyToken } from './auth.js';
+import { verifyAppKey } from './auth.js';
 import { moderate, generate, review } from './openai.js';
 import { boundedBytes, parseUpload, base64, RequestError } from './media.js';
 import { transcribe, issueSpeechToken, verifySpeechToken, synthesize } from './speech.js';
@@ -31,10 +31,10 @@ export function createWorker(fetcher=fetch) {
   const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers});
   if(origin && !origins.includes(origin))return json({success:false,error:'origin_not_allowed'},403);
   if(origin)headers['Access-Control-Allow-Origin']=origin;
-  headers['Access-Control-Expose-Headers']='X-Request-Id, Retry-After';headers['Access-Control-Allow-Methods']='GET, POST, OPTIONS';headers['Access-Control-Allow-Headers']='Authorization, Content-Type';
+  headers['Access-Control-Expose-Headers']='X-Request-Id, Retry-After';headers['Access-Control-Allow-Methods']='GET, POST, OPTIONS';headers['Access-Control-Allow-Headers']='X-App-Key, X-User-Id, Content-Type';
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
   const path=new URL(request.url).pathname;
-  if(path==='/health' && request.method==='GET')return json({success:true,service:'kidzen-students-ai-tutor',version:'2.1.0'});
+  if(path==='/health' && request.method==='GET')return json({success:true,service:'kidzen-students-ai-tutor',version:'2.2.0'});
   const visualId=path.match(/^\/v1\/tutor\/visuals\/([a-z]+)\.svg$/)?.[1];
   if(visualId && request.method==='GET') {
    const svg=visualSvg(visualId);if(svg)return new Response(svg,{headers:{...headers,'Content-Type':'image/svg+xml','Cache-Control':'public, max-age=86400','Content-Security-Policy':"default-src 'none'; style-src 'none'; sandbox"}});
@@ -42,8 +42,14 @@ export function createWorker(fetcher=fetch) {
   const routes={'/v1/tutor/config':'GET','/v1/tutor/suggestions':'GET','/v1/tutor/chat':'POST','/chat':'POST','/v1/tutor/voice-chat':'POST','/v1/tutor/photo-chat':'POST','/v1/tutor/speech':'POST'};
   if(!Object.hasOwn(routes,path))return json({success:false,error:'endpoint_not_found'},404);
   if(routes[path]!==request.method){headers.Allow=routes[path];return json({success:false,error:'method_not_allowed'},405);}
-  if(!env.TUTOR_JWT_SECRET || env.TUTOR_JWT_SECRET.length<32 || !env.TOKEN_ISSUER || !env.TOKEN_AUDIENCE)return json({success:false,error:'service_not_configured'},503);
-  const identity=await verifyToken(request,env);if(!identity)return json({success:false,error:'parent_authorized_token_required'},401);
+  if(!env.TUTOR_APP_KEY || env.TUTOR_APP_KEY.length<16)return json({success:false,error:'app_key_not_configured'},503);
+  if(!await verifyAppKey(request,env))return json({success:false,error:'invalid_app_key'},401);
+  const userId=request.headers.get('X-User-Id');
+  if(!userId || !/^[A-Za-z0-9_-]{1,128}$/.test(userId))return json({success:false,error:'user_id_required'},400);
+  // Client-supplied UID is used only for quotas, never proof of identity/payment.
+  // Hash it before naming a counter so raw Google/Firebase IDs are not stored.
+  const uidHash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(userId));
+  const identity={sub:Array.from(new Uint8Array(uidHash),b=>b.toString(16).padStart(2,'0')).join('')};
   if(path==='/v1/tutor/config')return json({success:true,data:{grades:GRADES,languages:LANGUAGES,max_message_characters:1000,max_history_messages:8,media:{voice_questions:env.OPENAI_AUDIO_CONFIRMED==='true',photo_questions:env.PHOTO_UPLOAD_SAFEGUARDS_CONFIRMED==='true',audio_replies:env.OPENAI_AUDIO_CONFIRMED==='true',audio_format:'mono_16000hz_pcm16_wav',max_audio_seconds:45,max_photo_bytes:2097152,photo_types:['image/jpeg','image/png'],illustrations_per_day:3},disclosure:'I am an AI learning helper. My voice is made by AI. I can make mistakes. Ask a trusted grown-up when you need help.'}});
   if(path==='/v1/tutor/suggestions') {
    const language=new URL(request.url).searchParams.get('language') || 'en';if(!Object.hasOwn(LANGUAGES,language))return json({success:false,error:'invalid_language'},400);

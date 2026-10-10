@@ -2,7 +2,7 @@ import { base64 } from './media.js';
 const encoder=new TextEncoder();
 const b64url=bytes=>base64(bytes).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const decode=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
-async function key(env,uses){return crypto.subtle.importKey('raw',encoder.encode(env.TUTOR_JWT_SECRET),{name:'HMAC',hash:'SHA-256'},false,uses);}
+async function key(env,uses){return crypto.subtle.importKey('raw',encoder.encode('kidzen-speech-signing-v1:'+(env.OPENAI_API_KEY || env.GPT_API)),{name:'HMAC',hash:'SHA-256'},false,uses);}
 export async function issueSpeechToken(env,sub,text,language) {
  const payload=b64url(encoder.encode(JSON.stringify({purpose:'tutor-speech-v1',sub,text,language,exp:Math.floor(Date.now()/1000)+600})));
  const signature=await crypto.subtle.sign('HMAC',await key(env,['sign']),encoder.encode(payload));return payload+'.'+b64url(new Uint8Array(signature));

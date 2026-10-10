@@ -14,8 +14,6 @@ OPENAI_AUDIO_CONFIRMED = "false"
 # Enable after implementing safe uploads, caregiver guidance and reporting.
 PHOTO_UPLOAD_SAFEGUARDS_CONFIRMED = "false"
 ALLOWED_ORIGINS = "https://your-app.example"
-TOKEN_ISSUER = "kidzen-parent-backend"
-TOKEN_AUDIENCE = "kidzen-tutor"
 # Set true ONLY after OpenAI confirms Zero Data Retention for the API project.
 # This flag is an operator attestation, not an OpenAI retention setting.
 OPENAI_ZDR_CONFIRMED = "false"
