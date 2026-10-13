@@ -1,7 +1,6 @@
-# New Worker name prevents overwriting the deployed image service accidentally.
-name = "kidzen-students-ai-tutor"
+name = "kidzen-unified-api"
 main = "src/index.js"
-compatibility_date = "2026-06-01"
+compatibility_date = "2026-10-01"
 
 [vars]
 #TUTOR_MODEL = "gpt-6-astra"
