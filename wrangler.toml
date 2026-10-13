@@ -4,8 +4,10 @@ main = "src/index.js"
 compatibility_date = "2026-06-01"
 
 [vars]
-TUTOR_MODEL = "gpt-6-astra"
-SAFETY_MODEL = "gpt-6-astra"
+#TUTOR_MODEL = "gpt-6-astra"
+#SAFETY_MODEL = "gpt-6-astra"
+TUTOR_MODEL = "gpt-4.1-mini"
+SAFETY_MODEL = "gpt-4.1-mini"
 TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe"
 TTS_MODEL = "gpt-4o-mini-tts"
 TTS_VOICE = "coral"
@@ -17,6 +19,10 @@ ALLOWED_ORIGINS = "https://your-app.example"
 # Set true ONLY after OpenAI confirms Zero Data Retention for the API project.
 # This flag is an operator attestation, not an OpenAI retention setting.
 OPENAI_ZDR_CONFIRMED = "true"
+WORKSHEET_MODEL = "gemini-2.5-flash-lite"
+
+# GEMINI_API_KEY and OPENAI_API_KEY must be set with wrangler secret put.
+
 
 [[durable_objects.bindings]]
 name = "TUTOR_LIMITER"
