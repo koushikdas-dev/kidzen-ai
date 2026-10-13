@@ -30,7 +30,8 @@ export async function worksheetRoute(request,env,fetcher=fetch){
  const system=`You are an early childhood worksheet designer. Generate safe, age-appropriate printable worksheet exercises. Output JSON only. Avoid real school or child names, personal data, violence, stereotypes, trick questions, ambiguous answers. Follow syllabus, grade and language strictly. Keep prompts brief. No image URLs, HTML, markdown or AI art. Use print-friendly text, Unicode symbols and simple countable objects only. Every question must have a correct answer for a separate answer key. For matching, provide pairs as options in form 'left => right'. For multiple_choice or circle_correct provide 3 or 4 distinct options and answer equal to exactly one. For count_objects use only simple emoji/symbols in visual_text, with count matching the answer. Never claim images exist. For trace_write give letters/words. Each question_type must be one of the permitted types.`;
  const prompt=JSON.stringify({grade,subject,language,difficulty:input.difficulty||'easy',topic:input.topic||null,question_count:count,allowed_types:allowed,syllabus:syllabus.slice(0,10000),reference_patterns:samples[subject]||[],instructions:'Return exactly question_count exercises, use varied types appropriate to grade; mix writing space, matching, fill blanks and picture-like symbol counting when appropriate. questions array items: {type,instruction,question,options,answer,visual_text,writing_lines,concept}. options string[], writing_lines integer 0..5. Bengali text must be natural Bengali. No fabricated image assets.'});
  let raw;
- const model=env.WORKSHEET_MODEL||'gemini-2.5-flash-lite';
+ const model=String(env.WORKSHEET_MODEL||'gemini-2.5-flash-lite').trim().replace(/^models\//,'');
+ if(!/^[a-zA-Z0-9._-]+$/.test(model))return respond({success:false,error:'invalid_worksheet_model_config'},500);
  for(let attempt=0;attempt<2;attempt++){
   let r;
   try{
@@ -42,9 +43,9 @@ export async function worksheetRoute(request,env,fetcher=fetch){
   if(!r.ok){
    let detail={};try{const payload=await r.json();detail=payload.error||{}}catch{}
    const code=typeof detail.status==='string'?detail.status:'UPSTREAM_ERROR';
-   console.error('Worksheet Gemini API failure',{http_status:r.status,code,message:detail.message||''});
+   console.error('Worksheet Gemini API failure',{http_status:r.status,model,code,message:detail.message||''});
    if([429,500,502,503,504].includes(r.status)&&attempt===0){await new Promise(resolve=>setTimeout(resolve,900));continue}
-   return respond({success:false,error:'worksheet_upstream_error',upstream_status:r.status,upstream_code:code,message:r.status===429?'Gemini quota or rate limit exceeded':r.status===404?'Worksheet model not available; check WORKSHEET_MODEL':r.status===400?'Gemini rejected generation settings or prompt':r.status===403?'Gemini API key lacks access or API is disabled':'Gemini request failed'},502);
+   return respond({success:false,error:'worksheet_upstream_error',upstream_status:r.status,upstream_code:code,model,upstream_message:plain(detail.message).slice(0,500),message:r.status===429?'Gemini quota or rate limit exceeded':r.status===404?'Gemini returned 404; inspect upstream_message for exact cause':r.status===400?'Gemini rejected generation settings or prompt':r.status===403?'Gemini API key lacks access or API is disabled':'Gemini request failed'},502);
   }
   let payload;try{payload=await r.json()}catch{console.error('Worksheet Gemini non-JSON response');return respond({success:false,error:'worksheet_invalid_upstream_response'},502)}
   const candidate=payload.candidates?.[0];const resultText=candidate?.content?.parts?.map(p=>p.text||'').join('')||'';

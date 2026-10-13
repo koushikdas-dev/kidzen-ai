@@ -10,6 +10,7 @@ SAFETY_MODEL = "gpt-4.1-mini"
 TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe"
 TTS_MODEL = "gpt-4o-mini-tts"
 TTS_VOICE = "coral"
+WORKSHEET_MODEL = "gemini-2.5-flash-lite"
 # Confirm audio endpoint retention/consent configuration before enabling.
 OPENAI_AUDIO_CONFIRMED = "true"
 # Enable after implementing safe uploads, caregiver guidance and reporting.
@@ -18,7 +19,7 @@ ALLOWED_ORIGINS = "https://your-app.example"
 # Set true ONLY after OpenAI confirms Zero Data Retention for the API project.
 # This flag is an operator attestation, not an OpenAI retention setting.
 OPENAI_ZDR_CONFIRMED = "true"
-WORKSHEET_MODEL = "gemini-2.5-flash-lite"
+
 
 # GEMINI_API_KEY and OPENAI_API_KEY must be set with wrangler secret put.
 
