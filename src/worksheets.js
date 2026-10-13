@@ -46,7 +46,7 @@ function schema(allowed, count) {
 function validateItems(items, allowed, accepted, seen, target) {
   const reasons = {};
   const reject = reason => { reasons[reason] = (reasons[reason] || 0) + 1; };
-  for (const item of items) {
+  for (let item of items) {
     if (accepted.length >= target) break;
     if (!item || typeof item !== 'object' || !allowed.includes(item.type)) { reject('invalid_type'); continue; }
     const question = text(item.question);
