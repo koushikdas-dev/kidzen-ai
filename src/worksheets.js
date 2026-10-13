@@ -221,25 +221,37 @@ export async function worksheetRoute(request, env, fetcher = fetch) {
       instruction: `Generate exactly ${missing} NEW questions. Follow the schema. Avoid questions similar to the existing ones.`,
       existing_questions: accepted.map(q => q.question)
     }), allowed, missing);
-    if (repair.error) return repair.error;
-    const repairItems = Array.isArray(repair.data?.questions) ? repair.data.questions : [];
-    const moreReasons = validateItems(repairItems, allowed, accepted, seen, count);
-    for (const [key, value] of Object.entries(moreReasons)) reasons[key] = (reasons[key] || 0) + value;
+    if (repair.error) {
+      // A top-up failure must not discard already validated exercises.
+      console.warn('Worksheet top-up failed; returning available valid questions');
+    } else {
+      const repairItems = Array.isArray(repair.data?.questions) ? repair.data.questions : [];
+      const moreReasons = validateItems(repairItems, allowed, accepted, seen, count);
+      for (const [key, value] of Object.entries(moreReasons)) reasons[key] = (reasons[key] || 0) + value;
+    }
   }
-  if (accepted.length !== count) {
-    console.error('Worksheet validation failed', { requested: count, accepted: accepted.length, rejected_reasons: reasons });
-    return response({
-      success: false, error: 'worksheet_validation_failed',
-      requested_questions: count, accepted_questions: accepted.length,
-      rejected_reasons: reasons,
-      message: 'Model did not return enough valid unique questions after one repair attempt.'
-    }, 502);
+  if (accepted.length === 0) {
+    console.error('Worksheet has no valid questions', { requested: count, rejected_reasons: reasons });
+    return response({ success: false, error: 'worksheet_no_valid_questions',
+      requested_questions: count, accepted_questions: 0,
+      message: 'Gemini did not return any valid questions.' }, 502);
   }
-  return response({ success: true, data: {
-    worksheet_id: crypto.randomUUID(), title: 'KidzenAI Practice Worksheet',
-    class_level: grade, subject, language, total_questions: accepted.length,
-    print: { paper: 'A4', watermark: 'KidzenAI', fields: ['Name','Date','Class'], show_answers: false },
-    questions: accepted.map(({ answer, ...q }) => q),
-    answer_key: accepted.map(q => ({ id: q.id, answer: q.answer }))
-  } });
+  const partial = accepted.length < count;
+  if (partial) console.warn('Returning partial worksheet', { requested: count, accepted: accepted.length, rejected_reasons: reasons });
+  return response({
+    success: true,
+    partial,
+    message: partial
+      ? `Generated ${accepted.length} of ${count} requested questions.`
+      : 'Worksheet generated successfully.',
+    data: {
+      worksheet_id: crypto.randomUUID(), title: 'KidzenAI Practice Worksheet',
+      class_level: grade, subject, language,
+      requested_questions: count,
+      total_questions: accepted.length,
+      print: { paper: 'A4', watermark: 'KidzenAI', fields: ['Name','Date','Class'], show_answers: false },
+      questions: accepted.map(({ answer, ...q }) => q),
+      answer_key: accepted.map(q => ({ id: q.id, answer: q.answer }))
+    }
+  });
 }
