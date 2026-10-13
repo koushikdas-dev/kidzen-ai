@@ -1,3 +1,5 @@
+import { questionWorker } from './questions.ts';
+import { worksheetRoute } from './worksheets.js';
 import { GRADES, LANGUAGES, SUGGESTIONS, fallback, hasBlockedWords, hasPrivateDetails, urgentDisclosure } from './policy.js';
 import { moderate, generate, review } from './openai.js';
 import { boundedBytes, parseUpload, base64, RequestError } from './media.js';
@@ -62,6 +64,12 @@ export function createWorker(fetcher=fetch) {
   headers['Access-Control-Expose-Headers']='X-Request-Id, Retry-After';headers['Access-Control-Allow-Methods']='GET, POST, OPTIONS';headers['Access-Control-Allow-Headers']='X-User-Id, Content-Type';
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
   const path=new URL(request.url).pathname;
+  if(path==='/' || path==='/syllabus' || path==='/generate-test')return questionWorker.fetch(request,env);
+  if(path.startsWith('/v1/worksheets/')) {
+   if(!['GET','POST'].includes(request.method))return json({success:false,error:'method_not_allowed'},405);
+   const response=await worksheetRoute(request,env,fetcher);
+   return new Response(response.body,{status:response.status,headers:{...headers,'Content-Type':'application/json; charset=utf-8'}});
+  }
   if(path==='/health' && request.method==='GET')return json({success:true,service:'kidzen-students-ai-tutor',version:'2.3.0'});
   const visualId=path.match(/^\/v1\/tutor\/visuals\/([a-z]+)\.svg$/)?.[1];
   if(visualId && request.method==='GET') {

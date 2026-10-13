@@ -1,30 +1,8 @@
-# New Worker name prevents overwriting the deployed image service accidentally.
-name = "kidzen-students-ai-tutor"
+name = "kidzen-unified-api"
 main = "src/index.js"
-compatibility_date = "2026-06-01"
+compatibility_date = "2026-10-01"
 
 [vars]
-TUTOR_MODEL = "gpt-6-astra"
-SAFETY_MODEL = "gpt-6-astra"
-TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe"
-TTS_MODEL = "gpt-4o-mini-tts"
-TTS_VOICE = "coral"
-# Confirm audio endpoint retention/consent configuration before enabling.
-OPENAI_AUDIO_CONFIRMED = "true"
-# Enable after implementing safe uploads, caregiver guidance and reporting.
-PHOTO_UPLOAD_SAFEGUARDS_CONFIRMED = "true"
-ALLOWED_ORIGINS = "https://your-app.example"
-# Set true ONLY after OpenAI confirms Zero Data Retention for the API project.
-# This flag is an operator attestation, not an OpenAI retention setting.
-OPENAI_ZDR_CONFIRMED = "true"
-
-[[durable_objects.bindings]]
-name = "TUTOR_LIMITER"
-class_name = "TutorLimiter"
-
-[[migrations]]
-tag = "tutor-v1"
-new_sqlite_classes = ["TutorLimiter"]
-
-[observability]
-enabled = false
+WORKSHEET_MODEL = "gemini-2.5-flash-lite"
+# Copy existing Tutor bindings, secrets and flags from your deployed wrangler config.
+# GEMINI_API_KEY and OPENAI_API_KEY must be set with wrangler secret put.
